@@ -16,24 +16,22 @@
 #include <ESP8266WiFi.h>
 
 #include <arduino_homekit_server.h>
-#include "ButtonDebounce.h"
 #include "ButtonHandler.h"
 
-//D0 16 //led
-//D3  0 //flash button
-//D4  2 //led
+#define PIN_LED 16
 
-#define PIN_LED 16//D0
-
-const char *ssid = "your-ssid";
-const char *password = "your-password";
+const char *ssid = "WLAN1-0R5391";
+const char *password = "FEhqrTGj4a53fMDt";
 
 #define SIMPLE_INFO(fmt, ...)   printf_P(PSTR(fmt "\n") , ##__VA_ARGS__);
 
 void blink_led(int interval, int count) {
+  
 	for (int i = 0; i < count; i++) {
+  
 		builtinledSetStatus(true);
 		delay(interval);
+    
 		builtinledSetStatus(false);
 		delay(interval);
 	}
@@ -70,10 +68,12 @@ void setup() {
 }
 
 void loop() {
+  
 	homekit_loop();
 }
 
 void builtinledSetStatus(bool on) {
+  
 	digitalWrite(PIN_LED, on ? LOW : HIGH);
 }
 
@@ -87,15 +87,12 @@ extern "C" void occupancy_toggle();
 extern "C" void led_toggle();
 extern "C" void accessory_init();
 
-ButtonDebounce btn(0, INPUT_PULLUP, LOW);
 ButtonHandler btnHandler;
 
-void IRAM_ATTR btnInterrupt() {
-	btn.update();
-}
-
 void homekit_setup() {
+  
 	accessory_init();
+ 
 	uint8_t mac[WL_MAC_ADDR_LENGTH];
 	WiFi.macAddress(mac);
 	int name_len = snprintf(NULL, 0, "%s_%02X%02X%02X",
@@ -107,34 +104,22 @@ void homekit_setup() {
 
 	arduino_homekit_setup(&config);
 
-	btn.setCallback(std::bind(&ButtonHandler::handleChange, &btnHandler,
-			std::placeholders::_1));
-	btn.setInterrupt(btnInterrupt);
-	btnHandler.setIsDownFunction(std::bind(&ButtonDebounce::checkIsDown, &btn));
-	btnHandler.setCallback([](button_event e) {
-		if (e == BUTTON_EVENT_SINGLECLICK) {
-			SIMPLE_INFO("Button Event: SINGLECLICK");
-			led_toggle();
-		} else if (e == BUTTON_EVENT_DOUBLECLICK) {
-			SIMPLE_INFO("Button Event: DOUBLECLICK");
-			occupancy_toggle();
-		} else if (e == BUTTON_EVENT_LONGCLICK) {
-			SIMPLE_INFO("Button Event: LONGCLICK");
-			SIMPLE_INFO("Rebooting...");
-			homekit_storage_reset();
-			ESP.restart(); // or system_restart();
-		}
-	});
+  btnHandler.setup();
 }
 
 void homekit_loop() {
+  
 	btnHandler.loop();
 	arduino_homekit_loop();
+ 
 	static uint32_t next_heap_millis = 0;
 	uint32_t time = millis();
+ 
 	if (time > next_heap_millis) {
-		SIMPLE_INFO("heap: %d, sockets: %d",
-				ESP.getFreeHeap(), arduino_homekit_connected_clients_count());
+    
+		SIMPLE_INFO( "heap: %d, sockets: %d", ESP.getFreeHeap(), 
+		             arduino_homekit_connected_clients_count() );
+        
 		next_heap_millis = time + 5000;
 	}
 }
